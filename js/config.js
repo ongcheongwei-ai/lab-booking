@@ -38,15 +38,22 @@ const CONFIG = {
     phys: 'phys'
   },
 
-  // 每日节次时间表
+  // 每日节次时间表（每节40分钟）
   PERIODS: [
-    { period: 1, start: '07:30', end: '08:30' },
-    { period: 2, start: '08:30', end: '09:30' },
-    { period: 3, start: '09:45', end: '10:45' },
-    { period: 4, start: '10:45', end: '11:45' },
-    { period: 5, start: '12:30', end: '13:30' },
-    { period: 6, start: '13:30', end: '14:30' },
-    { period: 7, start: '14:30', end: '15:30' }
+    { period: 1,  start: '07:30', end: '08:10' },
+    { period: 2,  start: '08:10', end: '08:50' },
+    // 休息 08:50–09:10
+    { period: 3,  start: '09:10', end: '09:50' },
+    { period: 4,  start: '09:50', end: '10:30' },
+    // 休息 10:30–10:40
+    { period: 5,  start: '10:40', end: '11:20' },
+    { period: 6,  start: '11:20', end: '12:00' },
+    // 午休 12:00–12:50
+    { period: 7,  start: '12:50', end: '13:30' },
+    { period: 8,  start: '13:30', end: '14:10' },
+    // 休息 14:10–14:20
+    { period: 9,  start: '14:20', end: '15:00' },
+    { period: 10, start: '15:00', end: '15:40' }
   ],
 
   // 星期名称（马来西亚华文独中：周一至周六）

@@ -378,7 +378,7 @@ const App = {
     Object.keys(CONFIG.LABS).forEach(id => labUsage[id] = 0);
     monthBookings.forEach(b => { if (labUsage[b.lab] !== undefined) labUsage[b.lab]++; });
 
-    const totalSlots = 4 * 7 * workdays;
+    const totalSlots = 4 * CONFIG.PERIODS.length * workdays;
     const totalUsed = Object.values(labUsage).reduce((a, b) => a + b, 0);
     const rate = totalSlots > 0 ? ((totalUsed / totalSlots) * 100).toFixed(1) : 0;
 

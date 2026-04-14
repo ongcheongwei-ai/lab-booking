@@ -410,13 +410,13 @@ const Admin = {
       Object.keys(CONFIG.LABS).forEach(id => labStats[id] = 0);
       bookings.forEach(b => { if (labStats[b.lab] !== undefined) labStats[b.lab]++; });
 
-      // 总可用节数（每间实验室 x 每天7节 x 工作日数）
+      // 总可用节数（每间实验室 x 每天节数 x 工作日数）
       let workdays = 0;
       for (let d = 1; d <= lastDay; d++) {
         const day = new Date(parseInt(year), parseInt(mon) - 1, d).getDay();
         if (day >= 1 && day <= 6) workdays++;
       }
-      const totalSlots = 4 * 7 * workdays;
+      const totalSlots = 4 * CONFIG.PERIODS.length * workdays;
       const totalUsed = Object.values(labStats).reduce((a, b) => a + b, 0);
       const usageRate = totalSlots > 0 ? ((totalUsed / totalSlots) * 100).toFixed(1) : 0;
 
