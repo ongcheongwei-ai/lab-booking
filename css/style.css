@@ -100,18 +100,21 @@ body {
 /* 顶部栏内按钮样式 */
 #userInfo .btn-outline {
   color: white;
-  border-color: rgba(255,255,255,0.6);
+  border: 2px solid white;
+  font-weight: 600;
 }
 #userInfo .btn-outline:hover {
-  background: rgba(255,255,255,0.15);
-  border-color: white;
+  background: rgba(255,255,255,0.2);
 }
 #userInfo .btn-primary {
-  background: white;
-  color: var(--primary);
+  background: #ffc107;
+  color: #333;
+  font-weight: 600;
+  border: none;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
 }
 #userInfo .btn-primary:hover {
-  background: rgba(255,255,255,0.9);
+  background: #ffca2c;
 }
 
 /* 汉堡菜单 */
