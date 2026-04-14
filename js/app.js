@@ -118,6 +118,7 @@ const App = {
         <button class="btn btn-sm btn-outline" onclick="App.renderDashboard()" title="刷新数据">刷新</button>
       </div>
 
+      ${!Auth.isTeacher() ? `
       <div class="section-title">
         <h3>今日实验室状态</h3>
         <span id="dashCurrentTime" class="current-time"></span>
@@ -125,6 +126,7 @@ const App = {
       <div id="dashTodayStatus" class="lab-status-grid">
         <div class="loading">加载中...</div>
       </div>
+      ` : ''}
 
       <div class="section-title" style="margin-top:24px">
         <h3>今日完整时间表</h3>
@@ -151,10 +153,12 @@ const App = {
       </div>
       <div id="dashWeekView" class="timetable-grid-wrapper"></div>
 
+      ${!Auth.isTeacher() ? `
       <div class="section-title" style="margin-top:24px">
         <h3>本月快速统计</h3>
       </div>
       <div id="dashStats" class="stats-grid"></div>
+      ` : ''}
 
       ${!Auth.isLoggedIn() ? `
         <div class="dashboard-login-prompt">
@@ -188,10 +192,10 @@ const App = {
       this._dashBookings = bookingsRes.data || [];
       this._dashBlocked = blockedRes.data || [];
 
-      this._renderTodayStatus();
+      if (!Auth.isTeacher()) this._renderTodayStatus();
       this._renderTodayTable();
       this._renderDashWeek();
-      this._renderDashStats();
+      if (!Auth.isTeacher()) this._renderDashStats();
     } catch (err) {
       console.error('仪表板数据加载失败:', err);
     }
