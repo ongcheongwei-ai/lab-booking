@@ -43,12 +43,22 @@ const Booking = {
             <label for="bkDate">日期</label>
             <input type="date" id="bkDate" required>
           </div>
-          <div class="form-group">
-            <label for="bkPeriod">节次</label>
-            <select id="bkPeriod" required>
-              <option value="">-- 请选择节次 --</option>
-            </select>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="bkPeriod">起始节次</label>
+              <select id="bkPeriod" required>
+                <option value="">-- 请选择节次 --</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="bkDuration">连续节数</label>
+              <select id="bkDuration" required>
+                <option value="1">1 节</option>
+                <option value="2">连续 2 节</option>
+              </select>
+            </div>
           </div>
+          <div id="bkDurationWarning" class="info-msg" style="display:none"></div>
           <div class="form-group">
             <label for="bkNote">备注（选填）</label>
             <textarea id="bkNote" rows="2" placeholder="例如：需要显微镜 x30"></textarea>
@@ -150,7 +160,8 @@ const Booking = {
     classSelect.addEventListener('change', () => this._updateLabs());
     labSelect.addEventListener('change', () => this._updatePeriods());
     dateInput.addEventListener('change', () => this._updatePeriods());
-    periodSelect.addEventListener('change', () => this._checkConflict());
+    periodSelect.addEventListener('change', () => this._checkDuration());
+    document.getElementById('bkDuration').addEventListener('change', () => this._checkDuration());
 
     document.getElementById('bkPreview').addEventListener('click', () => this._showSummary());
     document.getElementById('bookingForm').addEventListener('submit', (e) => {
@@ -269,11 +280,54 @@ const Booking = {
     }
   },
 
-  _checkConflict() {
+  _checkDuration() {
     const msg = document.getElementById('bkConflictMsg');
+    const warning = document.getElementById('bkDurationWarning');
     msg.style.display = 'none';
     msg.className = 'error-msg';
+    warning.style.display = 'none';
     document.getElementById('bkSubmit').disabled = false;
+
+    const duration = parseInt(document.getElementById('bkDuration').value);
+    const periodNum = parseInt(document.getElementById('bkPeriod').value);
+    if (!periodNum || duration < 2) return;
+
+    // 检查下一节是否是连续的（不跨休息时间）
+    const periodIndex = CONFIG.PERIODS.findIndex(p => p.period === periodNum);
+    if (periodIndex === -1 || periodIndex + 1 >= CONFIG.PERIODS.length) {
+      warning.textContent = '最后一节课无法选择连续2节';
+      warning.style.display = 'block';
+      document.getElementById('bkSubmit').disabled = true;
+      return;
+    }
+
+    const nextPeriod = CONFIG.PERIODS[periodIndex + 1];
+    const currentEnd = CONFIG.PERIODS[periodIndex].end;
+    // 如果当前节次结束时间 !== 下一节开始时间，说明中间有休息
+    if (currentEnd !== nextPeriod.start) {
+      warning.textContent = `注意：第${periodNum}节和第${nextPeriod.period}节之间有休息时间（${currentEnd}–${nextPeriod.start}），但仍可连续预约。`;
+      warning.style.display = 'block';
+    }
+
+    // 检查下一节是否被占用
+    const labId = document.getElementById('bkLab').value;
+    const date = document.getElementById('bkDate').value;
+    const nextBlocked = this._blocked.some(bl =>
+      (bl.lab === labId || bl.lab === 'all') &&
+      bl.date === date &&
+      (bl.period === 'all' || String(bl.period) === String(nextPeriod.period))
+    );
+    const nextBooked = this._bookings.some(b =>
+      b.lab === labId && b.date === date &&
+      String(b.period) === String(nextPeriod.period) &&
+      (b.status === 'approved' || b.status === 'pending')
+    );
+
+    if (nextBlocked || nextBooked) {
+      msg.textContent = `第${nextPeriod.period}节（${nextPeriod.start}–${nextPeriod.end}）已被占用，无法连续预约2节。请改为1节或选择其他时段。`;
+      msg.style.display = 'block';
+      document.getElementById('bkSubmit').disabled = true;
+    }
   },
 
   _showSummary() {
@@ -288,8 +342,16 @@ const Booking = {
     const subject = document.getElementById('bkSubject').value;
     const labName = getLabName(document.getElementById('bkLab').value);
     const date = formatDateCN(document.getElementById('bkDate').value);
-    const period = getPeriodText(parseInt(document.getElementById('bkPeriod').value));
+    const periodNum = parseInt(document.getElementById('bkPeriod').value);
+    const duration = parseInt(document.getElementById('bkDuration').value);
     const note = document.getElementById('bkNote').value;
+
+    let periodDisplay = getPeriodText(periodNum);
+    if (duration === 2) {
+      const periodIndex = CONFIG.PERIODS.findIndex(p => p.period === periodNum);
+      const nextPeriod = CONFIG.PERIODS[periodIndex + 1];
+      periodDisplay = `第${periodNum}–${nextPeriod.period}节 (${CONFIG.PERIODS[periodIndex].start}–${nextPeriod.end})`;
+    }
 
     const summary = document.getElementById('bkSummary');
     summary.innerHTML = `
@@ -299,7 +361,8 @@ const Booking = {
       <div class="summary-item"><span>科目：</span><strong>${subject}</strong></div>
       <div class="summary-item"><span>实验室：</span><strong>${labName}</strong></div>
       <div class="summary-item"><span>日期：</span><strong>${date}</strong></div>
-      <div class="summary-item"><span>节次：</span><strong>${period}</strong></div>
+      <div class="summary-item"><span>节次：</span><strong>${periodDisplay}</strong></div>
+      <div class="summary-item"><span>节数：</span><strong>${duration} 节</strong></div>
       ${note ? `<div class="summary-item"><span>备注：</span><strong>${note}</strong></div>` : ''}
     `;
     summary.style.display = 'block';
@@ -315,26 +378,42 @@ const Booking = {
     submitBtn.textContent = '提交中...';
 
     try {
-      const booking = {
+      const periodNum = parseInt(document.getElementById('bkPeriod').value);
+      const duration = parseInt(document.getElementById('bkDuration').value);
+      const baseBooking = {
         teacherName: user.name,
         teacherId: user.id,
         subject: document.getElementById('bkSubjectId').value,
         lab: document.getElementById('bkLab').value,
         class: classSelect.selectedOptions[0].dataset.name,
         date: document.getElementById('bkDate').value,
-        period: document.getElementById('bkPeriod').value,
         note: document.getElementById('bkNote').value
       };
 
-      const result = await API.submitBooking(booking);
-      if (result.error) {
+      // 提交第一节
+      const result1 = await API.submitBooking({ ...baseBooking, period: String(periodNum) });
+      if (result1.error) {
         const msg = document.getElementById('bkConflictMsg');
-        msg.textContent = result.error;
+        msg.textContent = result1.error;
         msg.style.display = 'block';
         return;
       }
 
-      App.showToast('预约申请已提交！等待实验室助理审批。', 'success');
+      // 如果是连续2节，提交第二节
+      if (duration === 2) {
+        const periodIndex = CONFIG.PERIODS.findIndex(p => p.period === periodNum);
+        const nextPeriod = CONFIG.PERIODS[periodIndex + 1];
+        const result2 = await API.submitBooking({ ...baseBooking, period: String(nextPeriod.period) });
+        if (result2.error) {
+          const msg = document.getElementById('bkConflictMsg');
+          msg.textContent = `第1节已提交，但第${nextPeriod.period}节失败：${result2.error}`;
+          msg.style.display = 'block';
+          return;
+        }
+      }
+
+      const successMsg = duration === 2 ? '连续2节预约申请已提交！等待实验室助理审批。' : '预约申请已提交！等待实验室助理审批。';
+      App.showToast(successMsg, 'success');
       App.navigate('my-bookings');
     } catch (err) {
       App.showToast('提交失败：' + err.message, 'error');
