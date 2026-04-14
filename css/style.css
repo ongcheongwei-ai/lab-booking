@@ -94,7 +94,24 @@ body {
 
 .user-name {
   font-size: 14px;
-  opacity: 0.9;
+  color: white;
+}
+
+/* 顶部栏内按钮样式 */
+#userInfo .btn-outline {
+  color: white;
+  border-color: rgba(255,255,255,0.6);
+}
+#userInfo .btn-outline:hover {
+  background: rgba(255,255,255,0.15);
+  border-color: white;
+}
+#userInfo .btn-primary {
+  background: white;
+  color: var(--primary);
+}
+#userInfo .btn-primary:hover {
+  background: rgba(255,255,255,0.9);
 }
 
 /* 汉堡菜单 */
