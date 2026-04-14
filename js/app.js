@@ -104,7 +104,7 @@ const App = {
   logout() {
     Auth.logout();
     this.updateNav();
-    this.navigate('dashboard');
+    this.navigate('login');
     App.showToast('已登出', 'info');
   },
 
