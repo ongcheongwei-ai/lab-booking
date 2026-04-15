@@ -3,27 +3,50 @@
 // ==========================================
 
 const API = {
-  // 发送请求到 Google Apps Script
-  async request(action, params = {}) {
+  // 发送请求到 Google Apps Script（使用 JSONP 方式绕过 CORS）
+  _callbackId: 0,
+
+  request(action, params = {}) {
     const url = CONFIG.API_URL;
     if (!url || url === 'YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL') {
       console.warn('API URL 尚未配置，使用模拟数据');
       return this.mockRequest(action, params);
     }
 
-    try {
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain' },
-        body: JSON.stringify({ action, ...params })
-      });
-      const data = await response.json();
-      if (data.error) throw new Error(data.error);
-      return data;
-    } catch (err) {
-      console.error(`API 请求失败 [${action}]:`, err);
-      throw err;
-    }
+    // 将参数编码到 URL 中，使用 GET + 查询参数方式
+    const payload = encodeURIComponent(JSON.stringify({ action, ...params }));
+    const requestUrl = `${url}?payload=${payload}`;
+
+    return new Promise((resolve, reject) => {
+      const callbackName = `_gasCallback_${++this._callbackId}_${Date.now()}`;
+
+      // 超时处理
+      const timeout = setTimeout(() => {
+        delete window[callbackName];
+        if (script.parentNode) script.parentNode.removeChild(script);
+        reject(new Error('请求超时'));
+      }, 30000);
+
+      window[callbackName] = (data) => {
+        clearTimeout(timeout);
+        delete window[callbackName];
+        if (script.parentNode) script.parentNode.removeChild(script);
+        if (data.error) {
+          reject(new Error(data.error));
+        } else {
+          resolve(data);
+        }
+      };
+
+      const script = document.createElement('script');
+      script.src = `${requestUrl}&callback=${callbackName}`;
+      script.onerror = () => {
+        clearTimeout(timeout);
+        delete window[callbackName];
+        reject(new Error('网络请求失败'));
+      };
+      document.head.appendChild(script);
+    });
   },
 
   // --- 老师相关 ---
