@@ -3,50 +3,35 @@
 // ==========================================
 
 const API = {
-  // 发送请求到 Google Apps Script（使用 JSONP 方式绕过 CORS）
-  _callbackId: 0,
-
-  request(action, params = {}) {
+  // 发送请求到 Google Apps Script
+  async request(action, params = {}) {
     const url = CONFIG.API_URL;
     if (!url || url === 'YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL') {
       console.warn('API URL 尚未配置，使用模拟数据');
       return this.mockRequest(action, params);
     }
 
-    // 将参数编码到 URL 中，使用 GET + 查询参数方式
-    const payload = encodeURIComponent(JSON.stringify({ action, ...params }));
-    const requestUrl = `${url}?payload=${payload}`;
-
-    return new Promise((resolve, reject) => {
-      const callbackName = `_gasCallback_${++this._callbackId}_${Date.now()}`;
-
-      // 超时处理
-      const timeout = setTimeout(() => {
-        delete window[callbackName];
-        if (script.parentNode) script.parentNode.removeChild(script);
-        reject(new Error('请求超时'));
-      }, 30000);
-
-      window[callbackName] = (data) => {
-        clearTimeout(timeout);
-        delete window[callbackName];
-        if (script.parentNode) script.parentNode.removeChild(script);
-        if (data.error) {
-          reject(new Error(data.error));
-        } else {
-          resolve(data);
-        }
-      };
-
-      const script = document.createElement('script');
-      script.src = `${requestUrl}&callback=${callbackName}`;
-      script.onerror = () => {
-        clearTimeout(timeout);
-        delete window[callbackName];
-        reject(new Error('网络请求失败'));
-      };
-      document.head.appendChild(script);
-    });
+    try {
+      const response = await fetch(url, {
+        method: 'POST',
+        body: JSON.stringify({ action, ...params })
+      });
+      const text = await response.text();
+      try {
+        const data = JSON.parse(text);
+        if (data.error) throw new Error(data.error);
+        return data;
+      } catch (parseErr) {
+        // 如果响应不是 JSON，可能是 Google 登入页面 HTML
+        console.error('API 响应非 JSON:', text.substring(0, 200));
+        throw new Error('API 返回非预期格式');
+      }
+    } catch (err) {
+      console.error(`API 请求失败 [${action}]:`, err);
+      // 如果 fetch 失败，回退到模拟数据
+      console.warn('回退到模拟数据模式');
+      return this.mockRequest(action, params);
+    }
   },
 
   // --- 老师相关 ---
