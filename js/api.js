@@ -20,6 +20,12 @@ const API = {
       try {
         const data = JSON.parse(text);
         if (data.error) throw new Error(data.error);
+        // 清洗日期字段：将各种日期格式统一为 YYYY-MM-DD
+        if (data.data && Array.isArray(data.data)) {
+          data.data.forEach(item => {
+            if (item.date) item.date = this._normalizeDate(item.date);
+          });
+        }
         return data;
       } catch (parseErr) {
         // 如果响应不是 JSON，可能是 Google 登入页面 HTML
@@ -32,6 +38,21 @@ const API = {
       console.warn('回退到模拟数据模式');
       return this.mockRequest(action, params);
     }
+  },
+
+  // 将各种日期格式统一为 YYYY-MM-DD
+  _normalizeDate(dateStr) {
+    if (!dateStr) return dateStr;
+    const s = String(dateStr);
+    if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+    const d = new Date(s);
+    if (!isNaN(d.getTime())) {
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${y}-${m}-${day}`;
+    }
+    return s;
   },
 
   // --- 老师相关 ---
