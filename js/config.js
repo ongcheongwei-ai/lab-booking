@@ -143,7 +143,18 @@ function formatDate(date) {
 
 // 工具函数：格式化日期为中文显示
 function formatDateCN(dateStr) {
-  const d = new Date(dateStr + 'T00:00:00');
+  if (!dateStr) return '日期未知';
+  // 处理多种日期格式
+  let d;
+  const str = String(dateStr);
+  if (/^\d{4}-\d{2}-\d{2}$/.test(str)) {
+    // YYYY-MM-DD 格式
+    const [y, m, day] = str.split('-').map(Number);
+    d = new Date(y, m - 1, day);
+  } else {
+    d = new Date(str);
+  }
+  if (isNaN(d.getTime())) return String(dateStr);
   const weekday = ['日', '一', '二', '三', '四', '五', '六'][d.getDay()];
   return `${d.getMonth() + 1}月${d.getDate()}日 (星期${weekday})`;
 }
